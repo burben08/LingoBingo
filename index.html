@@ -1,0 +1,407 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Lingo Bingo</title>
+    <style>
+        :root {
+            --primary: #F43F5E;      /* Rose 500 - Love theme */
+            --primary-dark: #E11D48; /* Rose 600 */
+            --bg: #FFF1F2;           /* Rose 50 */
+            --surface: #FFFFFF;
+            --text: #4C1D95;         /* Deep Purple for contrast */
+            --text-light: #9F1239;   /* Rose 800 */
+            --border: #FECDD3;       /* Rose 200 */
+            --success: #10B981;
+            --danger: #EF4444;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        
+        body { background-color: var(--bg); color: var(--text); overflow-x: hidden; }
+        
+        header { background-color: var(--primary); color: white; padding: 1rem; text-align: center; font-size: 1.5rem; font-weight: bold; position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        
+        .container { padding: 1rem; max-width: 600px; margin: 0 auto; }
+        
+        .view { display: none; }
+        .view.active { display: block; }
+
+        /* Buttons & Inputs */
+        button { background-color: var(--primary); color: white; border: none; border-radius: 8px; padding: 0.75rem 1rem; font-size: 1rem; font-weight: 600; cursor: pointer; width: 100%; transition: background 0.2s; }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        button:active:not(:disabled) { background-color: var(--primary-dark); }
+        button.secondary { background-color: var(--text-light); }
+        button.success { background-color: var(--success); }
+        button.danger { background-color: var(--danger); }
+        
+        input, textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; margin-bottom: 1rem; }
+        textarea { resize: none; height: 100px; }
+
+        /* Home View */
+        .card-list { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem; }
+        .card-item { background: var(--surface); padding: 1rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(225, 29, 72, 0.15); display: flex; justify-content: space-between; align-items: center; cursor: pointer; border: 1px solid var(--border); }
+        .card-item h3 { font-size: 1.1rem; margin-bottom: 0.25rem; }
+        .card-item .progress { font-size: 0.875rem; color: var(--text-light); }
+        .draft-badge { font-size: 0.75rem; background: var(--border); color: var(--text-light); padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: bold; text-transform: uppercase; }
+
+        /* Grid */
+        .bingo-grid { display: grid; grid-template-columns: repeat(var(--grid-size, 4), 1fr); gap: 0.5rem; margin-top: 1rem; margin-bottom: 1rem; }
+        .bingo-cell { background: var(--surface); border: 2px solid var(--border); border-radius: 12px; aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center; font-size: 2rem; cursor: pointer; position: relative; overflow: hidden; box-shadow: 0 2px 4px rgba(225, 29, 72, 0.1); transition: transform 0.1s; text-align: center; padding: 2px; }
+        .bingo-cell.text-cover { font-size: 1.1rem; font-weight: bold; line-height: 1.1; word-break: break-word; } /* Adjusted for text */
+        .bingo-cell:active { transform: scale(0.95); }
+        .bingo-cell.filled { border-color: var(--primary); background-color: #FFF5F6; }
+        .bingo-cell.marked::after { content: ''; position: absolute; inset: 0; background-color: rgba(244, 63, 94, 0.2); background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%23E11D48" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>'); background-size: 50%; background-position: center; background-repeat: no-repeat; }
+
+        /* Modals */
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 50; align-items: center; justify-content: center; padding: 1rem; }
+        .modal-overlay.active { display: flex; }
+        .modal-content { background: var(--surface); width: 100%; max-width: 400px; border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .modal-title { margin-bottom: 1rem; font-size: 1.25rem; font-weight: bold; }
+        .modal-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+
+        /* Top Bar for Create/Play */
+        .top-bar { display: flex; gap: 0.5rem; margin-bottom: 1rem; align-items: center; }
+        .top-bar button { width: auto; padding: 0.5rem 1rem; }
+        .top-bar h2 { flex: 1; font-size: 1.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--primary-dark); }
+
+        .helper-text { font-size: 0.875rem; color: var(--text-light); text-align: center; margin-bottom: 1rem; }
+        
+        /* User switch button */
+        .user-switch { position: absolute; right: 1rem; top: 1rem; background: rgba(255,255,255,0.3); color: white; font-size: 0.875rem; padding: 0.25rem 0.5rem; width: auto; box-shadow: none; border-radius: 6px; }
+        
+        /* Size selector */
+        .size-selector { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+        .size-btn { flex: 1; background: var(--surface); color: var(--primary); border: 2px solid var(--border); }
+        .size-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+        /* Custom modal for alerts */
+        #custom-alert-modal .modal-content { max-width: 300px; text-align: center; }
+        #custom-alert-message { margin-bottom: 1.5rem; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <span id="app-header-title">Lingo Bingo 💝</span>
+        <button class="user-switch" id="btn-switch-user" onclick="logout()" style="display:none;">Switch User</button>
+    </header>
+
+    <!-- LOGIN VIEW -->
+    <div id="view-login" class="view container">
+        <h2 style="text-align: center; margin-top: 2rem; margin-bottom: 1rem; color: var(--primary-dark);">Who is playing?</h2>
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+            <button onclick="login('Mimi')" style="font-size: 1.2rem; padding: 1rem;">I am Mimi 👩🏼</button>
+            <button onclick="login('Beni')" style="font-size: 1.2rem; padding: 1rem;">I am Beni 👱🏼‍♂️</button>
+        </div>
+        <p class="helper-text" style="margin-top: 2rem;">Select who you are. You will be making bingo cards about what the OTHER person does!</p>
+    </div>
+
+    <!-- HOME VIEW -->
+    <div id="view-home" class="view container">
+        <button onclick="startCreate()">+ Create New Bingo Card</button>
+        <div class="card-list" id="card-list">
+            <!-- Cards populated here -->
+        </div>
+    </div>
+
+    <!-- CREATE VIEW -->
+    <div id="view-create" class="view container">
+        <div class="top-bar">
+            <button class="secondary" onclick="showView('view-home')">Back</button>
+            <h2>Card Editor</h2>
+        </div>
+        <input type="text" id="create-title" placeholder="Name your Bingo Card...">
+        
+        <label style="font-size: 0.875rem; color: var(--text-light); margin-bottom: 0.25rem; display: block;">Grid Size:</label>
+        <div class="size-selector">
+            <button class="size-btn" id="btn-size-3" onclick="setGridSize(3)">3x3</button>
+            <button class="size-btn active" id="btn-size-4" onclick="setGridSize(4)">4x4</button>
+            <button class="size-btn" id="btn-size-5" onclick="setGridSize(5)">5x5</button>
+        </div>
+
+        <p class="helper-text">Tap a square to add a cover (emoji or text) and description. Fill all cells to unlock Game Mode! 💕</p>
+        <div class="bingo-grid" id="create-grid" style="--grid-size: 4;"></div>
+        
+        <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+            <button id="btn-save-card" onclick="saveNewCard()" disabled>Save Draft</button>
+            <button id="btn-delete-draft" class="danger" onclick="deleteDraft()" style="display:none; width: auto;">Delete</button>
+        </div>
+    </div>
+
+    <!-- PLAY VIEW -->
+    <div id="view-play" class="view container">
+        <div class="top-bar">
+            <button class="secondary" onclick="showView('view-home')">Back</button>
+            <h2 id="play-title">Playing</h2>
+            <button class="secondary" onclick="startEdit(currentPlayingId)">Edit</button>
+        </div>
+        <p class="helper-text">Tap a square to view the text and mark it off!</p>
+        <div class="bingo-grid" id="play-grid" style="--grid-size: 4;"></div>
+        <button class="danger" onclick="deleteCurrentCard()" style="margin-top: 2rem;">Delete Card</button>
+    </div>
+
+    <!-- EDIT CELL MODAL (For Creating) -->
+    <div id="modal-edit" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-title">Edit Square</div>
+            <label>Cover (Emoji or text, max 10 chars):</label>
+            <input type="text" id="edit-emoji" placeholder="😍 or 'Cute'" maxlength="10">
+            <label id="edit-text-label" style="margin-top: 1rem; display: block;">What might they do/say?</label>
+            <textarea id="edit-text" placeholder="e.g. Says 'I love you', touches their hair..."></textarea>
+            <div class="modal-actions">
+                <button class="secondary" onclick="closeModal('modal-edit')">Cancel</button>
+                <button onclick="saveCellEdit()">Save Square</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- VIEW CELL MODAL (For Playing) -->
+    <div id="modal-play" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-title" style="text-align: center; font-size: 2.5rem; word-break: break-word;" id="play-modal-emoji"></div>
+            <p id="play-modal-text" style="text-align: center; font-size: 1.2rem; margin-bottom: 1.5rem;"></p>
+            <div class="modal-actions">
+                <button class="secondary" onclick="closeModal('modal-play')">Close</button>
+                <button id="btn-toggle-mark" onclick="toggleCellMark()">Mark Off</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- CUSTOM ALERT MODAL -->
+    <div id="custom-alert-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-title">Notice</div>
+            <p id="custom-alert-message"></p>
+            <div class="modal-actions">
+                <button onclick="closeModal('custom-alert-modal')">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CUSTOM CONFIRM MODAL -->
+    <div id="custom-confirm-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-title">Confirm</div>
+            <p id="custom-confirm-message"></p>
+            <div class="modal-actions">
+                <button class="secondary" onclick="handleConfirm(false)">Cancel</button>
+                <button class="danger" onclick="handleConfirm(true)">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // App State
+        let cards = JSON.parse(localStorage.getItem('lingoBingoCards')) || [];
+        let currentUser = localStorage.getItem('lingoBingoUser') || null;
+        let currentEditingCard = { id: null, title: '', cells: [], size: 4, author: '' };
+        let currentPlayingId = null;
+        let currentCellIndex = null;
+        let confirmCallback = null;
+
+        // Custom Alert & Confirm implementations to avoid iframe issues
+        function showAlert(message) {
+            document.getElementById('custom-alert-message').innerText = message;
+            openModal('custom-alert-modal');
+        }
+
+        function showConfirm(message, callback) {
+            document.getElementById('custom-confirm-message').innerText = message;
+            confirmCallback = callback;
+            openModal('custom-confirm-modal');
+        }
+
+        function handleConfirm(result) {
+            closeModal('custom-confirm-modal');
+            if (confirmCallback) {
+                confirmCallback(result);
+                confirmCallback = null;
+            }
+        }
+
+        // Save to Local Storage
+        function saveToStorage() {
+            localStorage.setItem('lingoBingoCards', JSON.stringify(cards));
+        }
+
+        // Navigation
+        function showView(viewId) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
+            if (viewId === 'view-home') renderHome();
+        }
+
+        // Modal Handlers
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+        }
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        // --- USER & THEME LOGIC ---
+        function getTargetPerson() {
+            return currentUser === 'Mimi' ? 'Beni' : 'Mimi';
+        }
+
+        function getAppName() {
+            return currentUser === 'Mimi' ? 'Beningo 💝' : 'Mimingo 💝';
+        }
+
+        function applyUserTheme() {
+            if (currentUser) {
+                document.getElementById('app-header-title').innerText = getAppName();
+                document.getElementById('edit-text-label').innerText = `What might ${getTargetPerson()} do/say?`;
+                document.getElementById('btn-switch-user').style.display = 'block';
+            } else {
+                document.getElementById('app-header-title').innerText = 'Lingo Bingo 💝';
+                document.getElementById('btn-switch-user').style.display = 'none';
+            }
+        }
+
+        function login(user) {
+            currentUser = user;
+            localStorage.setItem('lingoBingoUser', user);
+            applyUserTheme();
+            showView('view-home');
+        }
+
+        function logout() {
+            currentUser = null;
+            localStorage.removeItem('lingoBingoUser');
+            applyUserTheme();
+            showView('view-login');
+        }
+
+        // --- HOME LOGIC ---
+        function renderHome() {
+            const list = document.getElementById('card-list');
+            list.innerHTML = '';
+            
+            // Filter cards to only show ones made by the current user
+            const userCards = cards.filter(c => c.author === currentUser || !c.author);
+
+            if (userCards.length === 0) {
+                list.innerHTML = `<p class="helper-text" style="margin-top:2rem;">No bingo cards about ${getTargetPerson()} yet. Create one! 💕</p>`;
+                return;
+            }
+            
+            userCards.forEach(card => {
+                const totalFilled = card.cells.filter(c => c.text !== '').length;
+                const totalCells = card.size * card.size;
+                const isDraft = totalFilled < totalCells;
+                const markedCount = card.cells.filter(c => c.marked).length;
+                
+                const div = document.createElement('div');
+                div.className = 'card-item';
+                
+                // If not fully filled out, clicking opens it in Edit Mode. Otherwise Play mode.
+                div.onclick = () => {
+                    if (isDraft) startEdit(card.id);
+                    else startPlay(card.id);
+                };
+                
+                div.innerHTML = `
+                    <div>
+                        <h3>${card.title || 'Untitled Card'}</h3>
+                        <div class="progress">${isDraft ? `Draft: ${totalFilled}/${totalCells} filled` : `${markedCount}/${totalCells} marked`}</div>
+                    </div>
+                    ${isDraft ? '<span class="draft-badge">Draft</span>' : ''}
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        // --- CREATE / EDIT LOGIC ---
+        function startCreate() {
+            currentEditingCard = {
+                id: null,
+                title: '',
+                size: 4,
+                author: currentUser,
+                cells: Array(16).fill(null).map(() => ({ emoji: '', text: '', marked: false }))
+            };
+            document.getElementById('create-title').value = '';
+            document.getElementById('btn-delete-draft').style.display = 'none';
+            
+            setGridSize(4);
+            validateCreateSave();
+            showView('view-create');
+        }
+
+        function startEdit(id) {
+            const card = cards.find(c => c.id === id);
+            // Deep copy to avoid modifying original until saved
+            currentEditingCard = JSON.parse(JSON.stringify(card)); 
+            
+            document.getElementById('create-title').value = currentEditingCard.title;
+            document.getElementById('btn-delete-draft').style.display = 'block';
+            
+            // Re-initialize size UI without destroying cells
+            document.querySelectorAll('.size-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`btn-size-${currentEditingCard.size}`).classList.add('active');
+            
+            const grid = document.getElementById('create-grid');
+            grid.style.setProperty('--grid-size', currentEditingCard.size);
+
+            renderCreateGrid();
+            validateCreateSave();
+            showView('view-create');
+        }
+        
+        function setGridSize(size) {
+            currentEditingCard.size = size;
+            const totalCells = size * size;
+            
+            // Keep existing cells, pad or truncate
+            const newCells = [];
+            for(let i=0; i<totalCells; i++) {
+                if (currentEditingCard.cells[i]) {
+                    newCells.push(currentEditingCard.cells[i]);
+                } else {
+                    newCells.push({ emoji: '', text: '', marked: false });
+                }
+            }
+            currentEditingCard.cells = newCells;
+            
+            // Update UI buttons
+            document.querySelectorAll('.size-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`btn-size-${size}`).classList.add('active');
+            
+            // Update Grid CSS Variable
+            const grid = document.getElementById('create-grid');
+            grid.style.setProperty('--grid-size', size);
+            
+            renderCreateGrid();
+            validateCreateSave();
+        }
+
+        function renderCreateGrid() {
+            const grid = document.getElementById('create-grid');
+            grid.innerHTML = '';
+            currentEditingCard.cells.forEach((cell, index) => {
+                const isText = cell.emoji && cell.emoji.length > 2; // Usually emojis are 1-2 chars, words are 3+
+                
+                const div = document.createElement('div');
+                div.className = 'bingo-cell' + (cell.text && cell.emoji ? ' filled' : '') + (isText ? ' text-cover' : '');
+                div.innerText = cell.emoji || '+';
+                if(!cell.emoji) { div.style.color = "var(--border)"; div.style.backgroundColor = "transparent";}
+                div.onclick = () => openEditModal(index);
+                grid.appendChild(div);
+            });
+        }
+
+        function openEditModal(index) {
+            currentCellIndex = index;
+            const cell = currentEditingCard.cells[index];
+            document.getElementById('edit-emoji').value = cell.emoji;
+            document.getElementById('edit-text').value = cell.text;
+            openModal('modal-edit');
+        }
+
+        function saveCellEdit() {
+            const emoji = document.getElementById('edit-emoji').value.trim();
+            const text = document.getElementById('edit
